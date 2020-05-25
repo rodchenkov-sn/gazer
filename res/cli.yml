@@ -1,0 +1,24 @@
+name: gazer
+version: "1.0"
+author: Rodchenkov S.
+about: Simple tar archiver
+args:
+  - create:
+      short: c
+      long: create
+      value_name: DEST_ARCHIVE
+      help: Creates new tar file
+      takes_value: true
+  - INPUT:
+      help: files to archive
+      required: false
+      index: 1
+  - compress:
+      short: a
+      long: auto-compress
+  - extract:
+      short: x
+      long: extract
+      value_name: SOURCE_ARCHIVE
+      help: extracts files from archive
+      takes_value: true
