@@ -6,7 +6,31 @@ use crate::gazer::chunk_provider::ChunkProvider;
 use crate::gazer::tar_header::{is_chunk_empty, TarFileHeader};
 use crate::gazer::chunk_consumer::ChunkConsumer;
 
-pub fn untar<T: ChunkProvider>(target_path: &String, archive: &mut T) -> Result<(), String> {
+pub fn traverse<T: ChunkProvider>(archive: &mut T) -> Result<(), String> {
+    while let Some(chunk) = archive.get_next_chunk() {
+        if is_chunk_empty(&chunk) {
+            if let Some(next_chunk) = archive.get_next_chunk(){
+                if is_chunk_empty(&next_chunk) {
+                    return Ok(());
+                }
+            }
+            return Err(String::from("archive is broken"));
+        }
+        let header = TarFileHeader::from_chunk(&chunk)?;
+        println!("{}", header.name);
+        if header.tpe != 53 {
+            for _ in 0..header.chunk_count() {
+                if let Some(data) = archive.get_next_chunk() {
+                } else {
+                    return Err(String::from("archive is broken"));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn untar<T: ChunkProvider>(target_path: &String, archive: &mut T, verbose: bool) -> Result<(), String> {
     use std::fs::*;
     while let Some(chunk) = archive.get_next_chunk() {
         if is_chunk_empty(&chunk) {
@@ -18,6 +42,9 @@ pub fn untar<T: ChunkProvider>(target_path: &String, archive: &mut T) -> Result<
             return Err(String::from("archive is broken"));
         }
         let header = TarFileHeader::from_chunk(&chunk)?;
+        if verbose {
+            println!("Reading {}", header.name);
+        }
         if header.tpe == 53 {
             create_dir(format!("{}{}", target_path, header.name))
                 .map_err(|_| String::from("could not create folder"))?;
@@ -45,7 +72,7 @@ pub fn untar<T: ChunkProvider>(target_path: &String, archive: &mut T) -> Result<
     Ok(())
 }
 
-fn write_dir<T: ChunkConsumer>(path: &Path, prefix: String, consumer: &mut T) -> io::Result<()> {
+fn write_dir<T: ChunkConsumer>(path: &Path, prefix: String, consumer: &mut T, verbose: bool) -> io::Result<()> {
     let name = format!(r"{}{}/", prefix, String::from(path.file_name().unwrap().to_str().unwrap()));
     let dir_header = TarFileHeader{
         name: name.clone(),
@@ -58,20 +85,26 @@ fn write_dir<T: ChunkConsumer>(path: &Path, prefix: String, consumer: &mut T) ->
         link: "".to_string(),
         version: [48, 48]
     };
+    if verbose {
+        println!("Writing {}", name);
+    }
     consumer.consume_next_chunk(dir_header.to_chunk())?;
     for file in fs::read_dir(path)? {
         let file = file?;
         if file.path().is_dir() {
-            write_dir(&file.path(), name.clone(), consumer)?;
+            write_dir(&file.path(), name.clone(), consumer, verbose)?;
         } else {
-            write_file(&file.path(), name.clone(), consumer)?;
+            write_file(&file.path(), name.clone(), consumer, verbose)?;
         }
     }
     Ok(())
 }
 
-fn write_file<T: ChunkConsumer>(path: &Path, prefix: String, consumer: &mut T) -> io::Result<()> {
+fn write_file<T: ChunkConsumer>(path: &Path, prefix: String, consumer: &mut T, verbose: bool) -> io::Result<()> {
     let name = format!("{}{}", prefix, String::from(path.file_name().unwrap().to_str().unwrap()));
+    if verbose {
+        println!("Writing {}", name.as_str());
+    }
     let file_header = TarFileHeader{
         name,
         mode: "0100777".to_string(),
@@ -93,13 +126,13 @@ fn write_file<T: ChunkConsumer>(path: &Path, prefix: String, consumer: &mut T) -
     Ok(())
 }
 
-pub fn mktar<T: ChunkConsumer>(items: Vec<&Path>, consumer: &mut T) -> Result<(), String> {
+pub fn mktar<T: ChunkConsumer>(items: Vec<&Path>, consumer: &mut T, verbose: bool) -> Result<(), String> {
     for path in items {
         if path.is_dir() {
-            write_dir(path, "".to_string(), consumer)
+            write_dir(path, "".to_string(), consumer, verbose)
                 .map_err(|_| "bad dir writing".to_string())?;
         } else {
-            write_file(path, "".to_string(), consumer)
+            write_file(path, "".to_string(), consumer, verbose)
                 .map_err(|_| "bad file writing".to_string())?;
         }
     }

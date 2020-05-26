@@ -6,19 +6,41 @@ args:
   - create:
       short: c
       long: create
-      value_name: DEST_ARCHIVE
-      help: Creates new tar file
+      value_name: DST_ARCHIVE
+      help: Create new archive
       takes_value: true
   - INPUT:
-      help: files to archive
-      required: false
+      help: Files to archive
       index: 1
   - compress:
       short: a
       long: auto-compress
+      help: Apply gzip after archiving
   - extract:
       short: x
       long: extract
-      value_name: SOURCE_ARCHIVE
-      help: extracts files from archive
+      value_name: SRC_ARCHIVE
+      help: Extract files from the archive
       takes_value: true
+  - append:
+      short: r
+      long: append
+      help: Append to the existing archive
+      value_name: APP_ARCHIVE
+      takes_value: true
+  - file:
+      short: f
+      long: file
+      help: specify the archive's name
+      value_name: NME_ARCHIVE
+      takes_value: true
+  - list:
+      short: t
+      long: list
+      help: show a list of files and folders in the archive
+      value_name: LST_ARCHIVE
+      takes_value: true
+  - verbose:
+      short: v
+      long: verbose
+      help: show a list of processed files
