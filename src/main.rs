@@ -47,7 +47,7 @@ fn do_create(mut input: Option<Values>, mut output: Values, compress: bool, verb
         input_paths.push(Path::new(path));
     }
    if compress {
-       let mut cons = GzEncoder::new(&mut output_file, Compression::default());
+       let mut cons = GzEncoder::new(&mut output_file, Compression::best());
        match mktar::<GzEncoder<&mut File>>(input_paths, &mut cons, verbose) {
            Err(msg) => println!("Error: {}", msg),
            Ok(_) => {}
@@ -96,7 +96,7 @@ fn do_append(input: Option<Values>, mut output: Values, verbose: bool) -> Option
     let file_len = output_file.metadata().unwrap().len();
     if file_len >= 1024 {
         match output_file.set_len(file_len - 1024) {
-            Ok(_) => println!("ok"),
+            Ok(_) => {},
             Err(error) => println!("{}", error.to_string())
         }
     }
